@@ -47,6 +47,12 @@ class Construction {
 			case "rail_depot":
 				AITile.DemolishTile(rec.tile);
 				break;
+			case "bridge":
+				AIBridge.RemoveBridge(rec.tile);
+				break;
+			case "tunnel":
+				AITunnel.RemoveTunnel(rec.tile);
+				break;
 			case "vehicle":
 				if (AIVehicle.IsValidVehicle(rec.extra)) {
 					AIVehicle.SellVehicle(rec.extra);
@@ -72,6 +78,19 @@ function AdvertiseIfNeeded(town_id) {
 	}
 }
 
+function GrowTownIfAble(town_id, finance) {
+	if (!AITown.IsValidTown(town_id)) return;
+	AdvertiseIfNeeded(town_id);
+	local cash = finance.Balance();
+	if (cash >= 250000 && AITown.IsActionAvailable(town_id, AITown.TOWN_ACTION_BUILD_STATUE)) {
+		AITown.PerformTownAction(town_id, AITown.TOWN_ACTION_BUILD_STATUE);
+		cash = finance.Balance();
+	}
+	if (cash >= 25000 && AITown.IsActionAvailable(town_id, AITown.TOWN_ACTION_FUND_BUILDINGS)) {
+		AITown.PerformTownAction(town_id, AITown.TOWN_ACTION_FUND_BUILDINGS);
+	}
+}
+
 function ExclusiveSkip(town_id) {
 	local owner = AITown.GetExclusiveRightsCompany(town_id);
 	return owner != AICompany.COMPANY_INVALID && !AICompany.IsMine(owner);
@@ -90,6 +109,16 @@ function CardinalOffset(dir) {
 	if (dir == 1) return AIMap.GetMapSizeX();
 	if (dir == 2) return -1;
 	return -AIMap.GetMapSizeX();
+}
+
+function PathTile(hop) {
+	if (typeof hop == "table") return hop.tile;
+	return hop;
+}
+
+function PathExtra(hop) {
+	if (typeof hop == "table" && hop.rawin("extra")) return hop.extra;
+	return null;
 }
 
 function DirFromTiles(from_tile, to_tile) {

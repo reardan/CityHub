@@ -293,17 +293,32 @@ class BusBuilder {
 	}
 
 	function _buildDepot(near) {
-		for (local dir = 0; dir < 4; dir++) {
-			local tile = near + CardinalOffset(dir);
-			if (!AIMap.IsValidTile(tile) || !AITile.IsBuildable(tile)) continue;
-			if (!AIRoad.BuildRoad(near, tile)) continue;
-			this.construction.Push("road", near, tile);
-			if (AIRoad.BuildRoadDepot(tile, near)) {
-				this.construction.Push("road_depot", tile, null);
-				this.construction.Clear();
-				return tile;
+		if (!this.finance.EnsureMoney(8000)) return null;
+		for (local r = 1; r <= 4; r++) {
+			for (local dx = -r; dx <= r; dx++) {
+				for (local dy = -r; dy <= r; dy++) {
+					if (r > 1 && abs(dx) != r && abs(dy) != r) continue;
+					if (dx == 0 && dy == 0) continue;
+					local tile = TileOffset(near, dx, dy);
+					if (!AIMap.IsValidTile(tile) || !AITile.IsBuildable(tile)) continue;
+					local front = this._nearestRoad(tile, 1);
+					if (front == null) front = near;
+					if (!AIRoad.AreRoadTilesConnected(front, tile)) {
+						if (!AIRoad.BuildRoad(front, tile) &&
+							AIError.GetLastError() != AIError.ERR_ALREADY_BUILT) {
+							continue;
+						}
+						this.construction.Push("road", front, tile);
+					}
+					if (AIRoad.BuildRoadDepot(tile, front)) {
+						this.construction.Push("road_depot", tile, null);
+						this.construction.Clear();
+						return tile;
+					}
+				}
 			}
 		}
+		Log.Fail("road_depot", { tile = near });
 		return null;
 	}
 }

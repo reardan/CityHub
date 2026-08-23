@@ -44,14 +44,25 @@ class RailBuilder {
 		}
 	}
 
+	function _recentFail(key) {
+		if (!this.failed_pairs.rawin(key)) return false;
+		local when = this.failed_pairs[key];
+		if (typeof when != "integer") return true;
+		return AIDate.GetCurrentDate() - when < 180;
+	}
+
+	function _markFail(key) {
+		this.failed_pairs[key] <- AIDate.GetCurrentDate();
+	}
+
 	function BuildPair(pair) {
 		local key = min(pair.a.id, pair.b.id) + "-" + max(pair.a.id, pair.b.id);
-		if (this.failed_pairs.rawin(key)) return;
+		if (this._recentFail(key)) return;
 		if (VehicleCount(AIVehicle.VT_RAIL) >= this.cfg.max_trains) return;
 		local st_a = this._ensureStation(pair.a, pair.b);
 		local st_b = this._ensureStation(pair.b, pair.a);
 		if (st_a == null || st_b == null) {
-			this.failed_pairs[key] <- true;
+			if (this.finance.Usable() >= 40000) this._markFail(key);
 			Log.Info("RAIL", { pair = key, platforms = this.nplat, ok = 0, len = 0 });
 			return;
 		}
@@ -60,14 +71,14 @@ class RailBuilder {
 			astar, [[st_a.approach, st_a.exit_dir]], [st_b.approach], st_a.tile, st_b.tile
 		);
 		if (path == null || !BuildRailPath(path, this.construction, this.probes)) {
-			this.failed_pairs[key] <- true;
+			this._markFail(key);
 			Log.Info("RAIL", { pair = key, platforms = this.nplat, ok = 0, len = 0 });
 			return;
 		}
 		local pick = this.vehicles.PickTrain();
 		local veh = this.vehicles.BuyTrain(st_a.depot, pick, this.platform_len);
 		if (veh < 0) {
-			this.failed_pairs[key] <- true;
+			if (this.finance.Usable() >= 20000) this._markFail(key);
 			return;
 		}
 		this.vehicles.SetRailOrders(veh, st_a.tile, st_b.tile, st_a.depot);
@@ -227,7 +238,7 @@ class RailBuilder {
 			if (AIVehicle.GetVehicleType(sample) != AIVehicle.VT_RAIL) continue;
 			local cap = AIVehicle.GetCapacity(sample, this.cargo.pax);
 			if (cap <= 0) cap = 80;
-			if (waiting > 2 * cap) {
+			if (waiting > cap) {
 				local extra = AIVehicle.CloneVehicle(st.depot, sample, true);
 				if (AIVehicle.IsValidVehicle(extra)) AIVehicle.StartStopVehicle(extra);
 			}

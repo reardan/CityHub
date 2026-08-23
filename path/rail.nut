@@ -72,20 +72,85 @@ function RailCost(_astar, cur, nb) {
 	return cost;
 }
 
+function _pickBridge(len) {
+	local bridges = AIBridgeList_Length(len);
+	if (bridges.IsEmpty()) return null;
+	return bridges.Begin();
+}
+
+function _buildRailSpecial(path, i, construction, probes) {
+	local extra = PathExtra(path[i]);
+	if (extra == null) return false;
+	if (extra.rawin("bridge")) {
+		local start = extra.rawin("from") ? extra.from : PathTile(path[i - 1]);
+		local end = PathTile(path[i]);
+		local len = AIMap.DistanceManhattan(start, end);
+		local bid = _pickBridge(len);
+		if (bid == null) {
+			Log.Fail("rail_build", { tile = start, skip = "bridge" });
+			return null;
+		}
+		if (!AIBridge.BuildBridge(AIVehicle.VT_RAIL, bid, start, end)) {
+			if (AIError.GetLastError() != AIError.ERR_ALREADY_BUILT) {
+				Log.Fail("rail_build", { tile = start, skip = "bridge" });
+				return null;
+			}
+		} else {
+			construction.Push("bridge", start, null);
+		}
+		probes.InvalidateAround(start);
+		probes.InvalidateAround(end);
+		return true;
+	}
+	if (extra.rawin("tunnel")) {
+		local start = PathTile(path[i - 1]);
+		if (!AITunnel.BuildTunnel(AIVehicle.VT_RAIL, start)) {
+			if (AIError.GetLastError() != AIError.ERR_ALREADY_BUILT) {
+				Log.Fail("rail_build", { tile = start, skip = "tunnel" });
+				return null;
+			}
+		} else {
+			construction.Push("tunnel", start, null);
+		}
+		probes.InvalidateAround(start);
+		return true;
+	}
+	return false;
+}
+
+function _stepToward(from_tile, to_tile) {
+	local dx = AIMap.GetTileX(to_tile) - AIMap.GetTileX(from_tile);
+	local dy = AIMap.GetTileY(to_tile) - AIMap.GetTileY(from_tile);
+	if (dx != 0) dx = dx > 0 ? 1 : -1;
+	if (dy != 0) dy = dy > 0 ? 1 : -1;
+	return TileOffset(from_tile, dx, dy);
+}
+
 function BuildRailPath(path, construction, probes) {
 	if (path == null || path.len() < 3) return false;
 	local i = 1;
 	while (i < path.len() - 1) {
-		local from = path[i - 1];
-		local tile = path[i];
-		local j = i + 1;
-		local dir = DirFromTiles(tile, path[j]);
-		while (j + 1 < path.len() && DirFromTiles(path[j], path[j + 1]) == dir) j++;
-		local to = path[j];
+		local extra = PathExtra(path[i]);
+		if (extra != null) {
+			local special = _buildRailSpecial(path, i, construction, probes);
+			if (special == null) return false;
+			if (special) {
+				i++;
+				continue;
+			}
+		}
+		local from = PathTile(path[i - 1]);
+		local tile = PathTile(path[i]);
+		local to = PathTile(path[i + 1]);
+		local next_extra = PathExtra(path[i + 1]);
+		if (next_extra != null &&
+			(next_extra.rawin("bridge") || next_extra.rawin("tunnel"))) {
+			to = _stepToward(tile, to);
+		}
 		if (!AIRail.BuildRail(from, tile, to)) {
 			local err = AIError.GetLastError();
 			if (err == AIError.ERR_ALREADY_BUILT) {
-				i = j;
+				i++;
 				continue;
 			}
 			if (err == AIError.ERR_LAND_SLOPED_WRONG || err == AIError.ERR_AREA_NOT_CLEAR) {
@@ -102,7 +167,7 @@ function BuildRailPath(path, construction, probes) {
 		}
 		construction.Push("rail", tile, { from = from, to = to });
 		probes.InvalidateAround(tile);
-		i = j;
+		i++;
 	}
 	return true;
 }
