@@ -136,13 +136,15 @@ class AStar {
 	}
 
 	function Reconstruct(node) {
-		local tiles = [];
+		local hops = [];
 		local cur = node;
 		while (cur != null) {
-			tiles.insert(0, cur.tile);
+			local extra = null;
+			if (cur.rawin("extra")) extra = cur.extra;
+			hops.insert(0, { tile = cur.tile, extra = extra });
 			cur = cur.prev;
 		}
-		return tiles;
+		return hops;
 	}
 }
 
@@ -157,7 +159,9 @@ function FindPathWithRetries(astar, sources, goals, label_src, label_dest) {
 		last = astar.FindPath(sources, goals, att.w, att.cap);
 		if (last.ok) {
 			local path = astar.Reconstruct(last.node);
-			local manh = AIMap.DistanceManhattan(path[0], path[path.len() - 1]);
+			local manh = AIMap.DistanceManhattan(
+				PathTile(path[0]), PathTile(path[path.len() - 1])
+			);
 			Log.Info("PATH", {
 				src = label_src, dest = label_dest, w = att.w, exp = last.expansions,
 				ok = 1, len = path.len(), manh = manh,
@@ -169,7 +173,9 @@ function FindPathWithRetries(astar, sources, goals, label_src, label_dest) {
 			}
 			return path;
 		}
-		Log.Warn("PATH", { src = label_src, dest = label_dest, w = att.w, exp = last.expansions, ok = 0 });
+		Log.Warn("PATH", {
+			src = label_src, dest = label_dest, w = att.w, exp = last.expansions, ok = 0
+		});
 	}
 	Log.Info("PATH", {
 		src = label_src, dest = label_dest, w = 1, exp = last == null ? 0 : last.expansions,
