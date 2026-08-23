@@ -50,3 +50,13 @@ Every line is `CHUB <KIND> y=YYYY-MM-dd t=<tick> k=v`. Kinds: `STAT`, `HUB`,
 
 See [`bench/README.md`](bench/README.md) for 2-year and 5-year matches vs
 AAAHogEx on 256×256 temperate maps starting in 1970.
+
+## Development
+
+Work on a feature branch when the change is large or needs isolation:
+`username/TICKET-ID-short-description`. Commit directly to this repository.
+Do **not** open GitHub or GitLab pull/merge requests.
+
+Tickets live in [`issues/`](issues/README.md). Record the problem, acceptance
+criteria, and outcome there. Update [`bench/README.md`](bench/README.md) when
+a change is meant to move company value or cargo vs AAAHogEx.
