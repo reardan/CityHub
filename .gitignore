@@ -1,0 +1,9 @@
+.stage/
+bench/out/
+*.sav
+*.sav.gz
+__pycache__/
+.pytest_cache/
+*.cfg.bak
+.idea/
+.vscode/
