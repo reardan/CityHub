@@ -45,7 +45,7 @@ class Towns {
 		local taken = 0;
 		for (local id = scored.Begin(); !scored.IsEnd(); id = scored.Next()) {
 			local info = infos[id];
-			local seed = info.pop >= this.cfg.large_pop || info.city || taken < this.cfg.max_hubs;
+			local seed = info.pop >= this.cfg.large_pop || info.city;
 			if (seed && !selected.rawin(id)) {
 				info.role <- "seed";
 				this.hubs.append(info);
