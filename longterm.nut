@@ -42,9 +42,10 @@ class LongTerm {
 		if ((this.step_i % 40) != 0) return;
 		if (this.finance.Usable() < 50000) return;
 		this.towns.Analyze();
-		if (!this.cfg.disable_air) this.air.BuildHubs();
+		if (!this.cfg.disable_air) this.air.BuildHubs(this.cfg.max_hubs);
 		if (!this.cfg.disable_road) this.bus.CoverHubs();
 		if (!this.cfg.disable_rail) this.rail.BuildPairs();
+		this._growHubs();
 		if (this.finance.UnusedLoan() > 40000) this._tryFreight();
 	}
 
@@ -188,14 +189,82 @@ class LongTerm {
 		}
 	}
 
+	function _growHubs() {
+		foreach (hub in this.towns.hubs) {
+			if (!this.air.stations.rawin(hub.id) && !this.rail.stations.rawin(hub.id)) {
+				continue;
+			}
+			GrowTownIfAble(hub.id, this.finance);
+		}
+	}
+
 	function _replaceLost() {
 		while (this.events.lost_vehicles.len() > 0) {
-			this.events.lost_vehicles.pop();
+			local vid = this.events.lost_vehicles.pop();
+			this._replaceVehicle(vid);
 		}
+		this._replaceMissingRoutes();
 		if (this.events.refresh_engines) {
 			this.events.refresh_engines = false;
 			this.air.MaybeClone();
 			this.rail.MaybeClone();
+		}
+	}
+
+	function _replaceVehicle(vid) {
+		if (!AIVehicle.IsValidVehicle(vid)) return;
+		if (AIOrder.GetOrderCount(vid) < 2) return;
+		local vtype = AIVehicle.GetVehicleType(vid);
+		if (vtype == AIVehicle.VT_AIR) {
+			foreach (tid, st in this.air.stations) {
+				if (!AIAirport.IsHangarTile(st.hangar)) continue;
+				if (!this.finance.EnsureMoney(20000)) return;
+				local extra = AIVehicle.CloneVehicle(st.hangar, vid, true);
+				if (AIVehicle.IsValidVehicle(extra)) {
+					AIVehicle.StartStopVehicle(extra);
+					return;
+				}
+			}
+		} else if (vtype == AIVehicle.VT_RAIL) {
+			foreach (tid, st in this.rail.stations) {
+				if (!AIMap.IsValidTile(st.depot)) continue;
+				if (!this.finance.EnsureMoney(20000)) return;
+				local extra = AIVehicle.CloneVehicle(st.depot, vid, true);
+				if (AIVehicle.IsValidVehicle(extra)) {
+					AIVehicle.StartStopVehicle(extra);
+					return;
+				}
+			}
+		}
+	}
+
+	function _replaceMissingRoutes() {
+		foreach (e in this.rail.edges) {
+			if (AIVehicle.IsValidVehicle(e.veh)) continue;
+			if (!this.rail.stations.rawin(e.a) || !this.rail.stations.rawin(e.b)) continue;
+			local st_a = this.rail.stations[e.a];
+			local st_b = this.rail.stations[e.b];
+			local pick = this.vehicles.PickTrain();
+			local veh = this.vehicles.BuyTrain(st_a.depot, pick, this.rail.platform_len);
+			if (veh < 0) continue;
+			this.vehicles.SetRailOrders(veh, st_a.tile, st_b.tile, st_a.depot);
+			e.veh = veh;
+		}
+		foreach (o in this.bus.orphans) {
+			if (AIVehicle.IsValidVehicle(o.veh)) continue;
+			local depot = o.depot;
+			if (depot == null || !AIMap.IsValidTile(depot)) {
+				depot = this.bus._buildDepot(o.stop);
+			}
+			if (depot == null) continue;
+			local engine = this.vehicles.PickBus();
+			local veh = this.vehicles.BuyRoadVehicle(depot, engine, this.cargo.pax);
+			if (veh < 0) continue;
+			local hub = this.towns.Find(o.hub);
+			if (hub == null) continue;
+			this.vehicles.SetFeederOrders(veh, o.stop, this.bus._hubOrderTile(hub, o.stop));
+			o.veh = veh;
+			o.depot = depot;
 		}
 	}
 }

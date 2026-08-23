@@ -49,6 +49,10 @@ class CityHub extends AIController {
 				airs.append({ town = tid, tile = st.tile, type = st.type, station = st.station });
 			}
 		}
+		local air_links = [];
+		if (this.air != null) {
+			foreach (k, _v in this.air.links) air_links.append(k);
+		}
 		local rails = [];
 		if (this.rail != null) {
 			foreach (tid, st in this.rail.stations) {
@@ -73,6 +77,7 @@ class CityHub extends AIController {
 			start_year = this.start_year,
 			hubTownIds = hubs,
 			airStations = airs,
+			airLinks = air_links,
 			railStations = rails,
 			orphanBusRoutes = orphans,
 			railEdges = edges,
@@ -141,7 +146,7 @@ class CityHub extends AIController {
 		if (data.rawin("phase")) this.phase = data.phase;
 		if (data.rawin("start_year")) this.start_year = data.start_year;
 		if (data.rawin("failedPairs") && this.rail != null) {
-			foreach (k in data.failedPairs) this.rail.failed_pairs[k] <- true;
+			foreach (k in data.failedPairs) this.rail.failed_pairs[k] <- 0;
 		}
 		if (data.rawin("airStations")) {
 			foreach (st in data.airStations) {
@@ -151,6 +156,9 @@ class CityHub extends AIController {
 					hangar = AIAirport.GetHangarOfAirport(st.tile), town = st.town
 				};
 			}
+		}
+		if (data.rawin("airLinks") && this.air != null) {
+			foreach (k in data.airLinks) this.air.links[k] <- true;
 		}
 		if (data.rawin("railStations")) {
 			foreach (st in data.railStations) {
@@ -173,7 +181,7 @@ class CityHub extends AIController {
 			this.phase = "air";
 		} else if (this.phase == "air") {
 			Log.Info("HUB", { phase = "air" });
-			this.air.BuildHubs();
+			this.air.BuildHubs(3);
 			this.phase = "bus";
 		} else if (this.phase == "bus") {
 			Log.Info("HUB", { phase = "bus" });

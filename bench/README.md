@@ -71,6 +71,23 @@ cash is tight; rail rollback uses `DemolishTile` (API 14 has no
 5-year vs AAAHogEx after the loan-guard: seed 12345 CityHub 599162 vs
 AAAHogEx 6764340. CityHub stays solvent; it does not match HogEx scale.
 
+CITYHUB-2 (leveraged loan, load-if-available orders, rail builder
+fixes, hub growth). Same harness; maps are not strictly reproducible
+across OpenTTD default-cfg drift, so compare within a run.
+
+2-year vs AAAHogEx (GS cut values):
+
+| Seed | CityHub | AAAHogEx | CityHub fleet |
+| --- | ---: | ---: | --- |
+| 12345 | 415775 | 1129188 | 4 trains, 2 RVs, 4 planes |
+| 22222 | 235288 | 1119263 | 2 trains, 1 RV, 3 planes |
+| 33333 | 185527 | 1254819 | 0 trains, 1 RV, 6 planes |
+
+5-year seed 12345: CityHub 484750 vs AAAHogEx 8299816. CityHub stays
+max-loaned (300k) with 1 train / 4 RVs / 18 planes. Quarterly cargo
+rises from ~650 to ~2860 (was flat ~1040 before). Company value
+oscillates with the loan; income is ~140–190k/quarter vs HogEx ~1.1M.
+
 ## Interactive debug
 
 Set `gui.ai_developer_tools = true` and CityHub setting `IsDebug = 1` to
