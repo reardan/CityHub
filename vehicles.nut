@@ -52,7 +52,15 @@ class Vehicles {
 
 	function BuyPlane(hangar, engine) {
 		if (!this.finance.EnsureMoney(AIEngine.GetPrice(engine))) return -1;
-		local veh = AIVehicle.BuildVehicleWithRefit(hangar, engine, this.cargo.pax);
+		local veh = -1;
+		if (this.cargo.mail != null && AIEngine.CanRefitCargo(engine, this.cargo.mail)) {
+			veh = AIVehicle.BuildVehicle(hangar, engine);
+			if (AIVehicle.IsValidVehicle(veh) && this.cargo.pax != null) {
+				AIVehicle.RefitVehicle(veh, this.cargo.pax);
+			}
+		} else {
+			veh = AIVehicle.BuildVehicleWithRefit(hangar, engine, this.cargo.pax);
+		}
 		if (!AIVehicle.IsValidVehicle(veh)) {
 			Log.Fail("buy_plane", { engine = engine });
 			return -1;
@@ -117,14 +125,14 @@ class Vehicles {
 	}
 
 	function SetAirOrders(veh, tile_a, tile_b) {
-		AIOrder.AppendOrder(veh, tile_a, AIOrder.OF_FULL_LOAD_ANY);
-		AIOrder.AppendOrder(veh, tile_b, AIOrder.OF_FULL_LOAD_ANY);
+		AIOrder.AppendOrder(veh, tile_a, AIOrder.OF_NONE);
+		AIOrder.AppendOrder(veh, tile_b, AIOrder.OF_NONE);
 		AIVehicle.StartStopVehicle(veh);
 	}
 
 	function SetRailOrders(veh, tile_a, tile_b, depot) {
-		AIOrder.AppendOrder(veh, tile_a, AIOrder.OF_FULL_LOAD_ANY);
-		AIOrder.AppendOrder(veh, tile_b, AIOrder.OF_FULL_LOAD_ANY);
+		AIOrder.AppendOrder(veh, tile_a, AIOrder.OF_NONE);
+		AIOrder.AppendOrder(veh, tile_b, AIOrder.OF_NONE);
 		if (this.cfg.breakdowns && depot != null && AIMap.IsValidTile(depot)) {
 			AIOrder.AppendOrder(veh, depot, AIOrder.OF_SERVICE_IF_NEEDED);
 		}

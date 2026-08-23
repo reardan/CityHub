@@ -38,10 +38,12 @@ class Finance {
 		local loan = AICompany.GetLoanAmount();
 		if (loan <= 0) return;
 		local cash = this.Balance();
-		local repay = cash / 2;
+		local buffer = 30000;
+		if (cash - buffer <= loan) return;
+		local repay = cash - buffer;
+		if (repay > loan) repay = loan;
 		repay = repay - (repay % interval);
 		if (repay <= 0) return;
-		if (repay > loan) repay = loan;
 		if (loan - repay + cash < 0) return;
 		AICompany.SetLoanAmount(loan - repay);
 	}

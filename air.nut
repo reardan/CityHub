@@ -6,6 +6,7 @@ class AirBuilder {
 	towns = null;
 	construction = null;
 	stations = null;
+	links = null;
 
 	constructor(cfg, cargo, finance, vehicles, towns, construction) {
 		this.cfg = cfg;
@@ -15,11 +16,12 @@ class AirBuilder {
 		this.towns = towns;
 		this.construction = construction;
 		this.stations = {};
+		this.links = {};
 	}
 
 	function PreferredTypes() {
 		local types = [];
-		local poor = this.finance.Usable() < 200000 || this.cfg.infra_maintenance || this.stations.len() >= 2;
+		local poor = this.finance.Usable() < 200000 || this.cfg.infra_maintenance;
 		if (poor) {
 			types = [AIAirport.AT_SMALL, AIAirport.AT_COMMUTER, AIAirport.AT_LARGE];
 		} else {
@@ -40,13 +42,13 @@ class AirBuilder {
 		return out;
 	}
 
-	function BuildHubs() {
+	function BuildHubs(max_new) {
 		if (this.cfg.disable_air) return;
 		local built = 0;
 		foreach (hub in this.towns.hubs) {
 			YieldIfLow();
 			if (this.stations.rawin(hub.id)) continue;
-			if (built >= 3) break;
+			if (built >= max_new) break;
 			if (this.stations.len() >= 2 && this.finance.Usable() < 80000) break;
 			if (this.BuildOne(hub)) built++;
 		}
@@ -159,11 +161,17 @@ class AirBuilder {
 			}
 		}
 		local linked = 0;
-		local cap = max(this.stations.len() - 1, 1);
+		local n = this.stations.len();
+		local cap = n * (n - 1) / 2;
+		if (cap < 1) cap = 1;
 		foreach (pair in pairs) {
+			if (pair.a == null || pair.b == null) continue;
 			if (!this.stations.rawin(pair.a.id) || !this.stations.rawin(pair.b.id)) continue;
+			local key = min(pair.a.id, pair.b.id) + "-" + max(pair.a.id, pair.b.id);
+			if (this.links.rawin(key)) continue;
 			if (linked >= cap) break;
 			this.FlyPair(this.stations[pair.a.id], this.stations[pair.b.id]);
+			this.links[key] <- true;
 			linked++;
 		}
 	}
@@ -194,7 +202,6 @@ class AirBuilder {
 		if (this.cargo.pax == null) return;
 		if (VehicleCount(AIVehicle.VT_AIR) >= this.cfg.max_aircraft) return;
 		if (this.finance.Usable() < 60000) return;
-		if (VehicleCount(AIVehicle.VT_AIR) >= 4 && this.finance.UnusedLoan() < 80000) return;
 		foreach (tid, st in this.stations) {
 			if (!AIStation.IsValidStation(st.station)) continue;
 			local waiting = AIStation.GetCargoWaiting(st.station, this.cargo.pax);
@@ -203,7 +210,7 @@ class AirBuilder {
 			local sample = list.Begin();
 			local cap = AIVehicle.GetCapacity(sample, this.cargo.pax);
 			if (cap <= 0) cap = 50;
-			if (waiting > 2 * cap) {
+			if (waiting > cap) {
 				local extra = AIVehicle.CloneVehicle(st.hangar, sample, true);
 				if (AIVehicle.IsValidVehicle(extra)) AIVehicle.StartStopVehicle(extra);
 			}
